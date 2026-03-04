@@ -166,3 +166,20 @@ export async function savePushSubscription(subscription) {
     if (error) console.error('[Pinpoint] savePushSubscription error:', error.message);
     return !error;
 }
+
+/**
+ * Syncs the day's hints to daily_meta so the Edge Function can send 
+ * them in push notifications.
+ * @param {string} date
+ * @param {string[]} hints - Array of 8 hint strings
+ */
+export async function syncDailyHints(date, hints) {
+    const supabase = initSupabase();
+    // Use upsert to create or update today's metadata with the hint strings
+    const { error } = await supabase
+        .from('daily_meta')
+        .upsert({ puzzle_date: date, hints: hints }, { on_conflict: 'puzzle_date' });
+
+    if (error) console.error('[Pinpoint] syncDailyHints error:', error.message);
+    return !error;
+}

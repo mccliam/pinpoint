@@ -11,7 +11,7 @@ import {
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
     checkAndClaimFirstSolver, subscribeToFirstSolver,
-    savePushSubscription,
+    savePushSubscription, syncDailyHints
 } from './supabase.js';
 
 // ─────────────────────────────────────────────────
@@ -504,6 +504,9 @@ async function init() {
         S.city = getDailyCity(locations);
         S.hints = buildHints(S.city, hints);
         S.playerName = localStorage.getItem(NAME_KEY) || '';
+
+        // Sync hints to Supabase for the push notification service
+        syncDailyHints(S.dateStr, S.hints);
 
         // Restore today's progress
         const saved = getTodayRecord();
