@@ -11,6 +11,7 @@ import {
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
     checkAndClaimFirstSolver, subscribeToFirstSolver,
+    savePushSubscription,
 } from './supabase.js';
 
 // ─────────────────────────────────────────────────
@@ -21,6 +22,7 @@ const STATS_KEY = 'pinpoint_stats';
 const TODAY_KEY = 'pinpoint_today';
 const NAME_KEY = 'pinpoint_name';
 const DARK_KEY = 'pinpoint_dark';
+const PUSH_VAPID_PUBLIC_KEY = 'BEozc8-rcMqA_Xmo-ZO8dbRvPc3gGQoO5php-rPRDlc0OZtXHWmIfMFZEXQwkn8QheWvb2iEc4D3XBM3LYeL5pc';
 
 const ORDINALS = ['1st', '2nd', '3rd', '4th', '5th'];
 const DIFF_STYLE = {
@@ -395,6 +397,46 @@ async function shareResult(won) {
 // ─────────────────────────────────────────────────
 function renderSettings() {
     $('settings-name').value = S.playerName;
+    updatePushToggleUI();
+}
+
+function updatePushToggleUI() {
+    const active = Notification.permission === 'granted';
+    const btn = $('btn-push-toggle');
+    btn.classList.toggle('bg-primary', active);
+    btn.querySelector('span').classList.toggle('translate-x-6', active);
+}
+
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        showToast('Push not supported on this device/browser');
+        return;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            showToast('Notification permission denied');
+            return;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: PUSH_VAPID_PUBLIC_KEY
+        });
+
+        const success = await savePushSubscription(subscription);
+        if (success) {
+            showToast('Lock screen notifications enabled! 🔔');
+            updatePushToggleUI();
+        } else {
+            showToast('Failed to save subscription to server');
+        }
+    } catch (err) {
+        console.error('[Pinpoint] Push subscription error:', err);
+        showToast('Error enabling notifications');
+    }
 }
 
 // ─────────────────────────────────────────────────
@@ -554,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('btn-dark-toggle').addEventListener('click', () =>
         applyDark(!document.documentElement.classList.contains('dark'))
     );
+    $('btn-push-toggle').addEventListener('click', subscribeToPush);
 
     // Register service worker
     if ('serviceWorker' in navigator) {

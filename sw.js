@@ -69,3 +69,40 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
+// ─── Push: handle background notifications ────────────────
+self.addEventListener('push', (event) => {
+    let data = { title: 'Pinpoint', body: 'A new clue has been revealed! 🌍' };
+    try {
+        if (event.data) data = event.data.json();
+    } catch (e) {
+        data.body = event.data.text();
+    }
+
+    const options = {
+        body: data.body,
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        vibrate: [100, 50, 100],
+        data: { url: './index.html' }
+    };
+
+    event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// ─── Notification Click: open app ─────────────────────────
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            if (clientList.length > 0) {
+                let client = clientList[0];
+                for (let i = 0; i < clientList.length; i++) {
+                    if (clientList[i].focused) client = clientList[i];
+                }
+                return client.focus();
+            }
+            return clients.openWindow('./index.html');
+        })
+    );
+});

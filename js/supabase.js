@@ -145,3 +145,24 @@ export function subscribeToFirstSolver(date, callback) {
         )
         .subscribe();
 }
+
+// ─────────────────────────────────────────────────
+// Push Notifications
+// ─────────────────────────────────────────────────
+
+/**
+ * Saves a Web Push subscription to the database.
+ * @param {object} subscription — The PushSubscription object
+ */
+export async function savePushSubscription(subscription) {
+    const supabase = initSupabase();
+    const { error } = await supabase
+        .from('push_subscriptions')
+        .upsert({ 
+            subscription: subscription,
+            updated_at: new Date().toISOString()
+        }, { on_conflict: 'subscription' });
+
+    if (error) console.error('[Pinpoint] savePushSubscription error:', error.message);
+    return !error;
+}
