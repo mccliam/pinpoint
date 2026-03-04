@@ -398,7 +398,8 @@ function buildShareText(won) {
     const boxes = won
         ? '🟩'.repeat(MAX_GUESSES - S.guessesLeft) + '⬜'.repeat(S.guessesLeft)
         : '🟥'.repeat(MAX_GUESSES);
-    return `Pinpoint ${S.dateStr}\n${won ? `${MAX_GUESSES - S.guessesLeft + 1}/${MAX_GUESSES}` : 'X/5'} ${S.city.name}\n${boxes}\nStreak: ${st.streak} 🔥\npinpoint.app`;
+    const score = won ? `${MAX_GUESSES - S.guessesLeft}` : 'X';
+    return `Pinpoint ${S.dateStr}\n${score}/${MAX_GUESSES}\n${boxes}\nStreak: ${st.streak} 🔥\nhttps://mccliam.github.io/pinpoint/`;
 }
 async function shareResult(won) {
     const text = buildShareText(won);
