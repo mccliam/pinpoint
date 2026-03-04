@@ -409,6 +409,54 @@ async function shareResult(won) {
 }
 
 // ─────────────────────────────────────────────────
+// Weather
+// ─────────────────────────────────────────────────
+async function fetchWeather(cityName) {
+    try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`);
+        const geoData = await geoRes.json();
+        if (!geoData.results || geoData.results.length === 0) return;
+        const { latitude, longitude } = geoData.results[0];
+
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`);
+        const weatherData = await weatherRes.json();
+        if (!weatherData.current) return;
+
+        const temp = Math.round(weatherData.current.temperature_2m);
+        const code = weatherData.current.weather_code;
+
+        $('weather-temp').textContent = `${temp}°C`;
+        $('weather-display').classList.remove('hidden');
+
+        const weatherMap = {
+            0: { icon: 'sunny', desc: 'Clear' },
+            1: { icon: 'partly_cloudy_day', desc: 'Mainly Clear' },
+            2: { icon: 'partly_cloudy_day', desc: 'Partly Cloudy' },
+            3: { icon: 'cloud', desc: 'Overcast' },
+            45: { icon: 'foggy', desc: 'Foggy' },
+            51: { icon: 'rainy', desc: 'Drizzle' },
+            61: { icon: 'rainy', desc: 'Rain' },
+            71: { icon: 'ac_unit', desc: 'Snow' },
+            95: { icon: 'thunderstorm', desc: 'Thunderstorm' },
+        };
+
+        let info = weatherMap[code];
+        if (!info) {
+            if (code >= 1 && code <= 3) info = weatherMap[1];
+            else if (code >= 51 && code <= 67) info = weatherMap[61];
+            else if (code >= 71 && code <= 77) info = weatherMap[71];
+            else if (code >= 80 && code <= 82) info = weatherMap[80] || weatherMap[61];
+            else info = { icon: 'device_thermostat', desc: 'Weather' };
+        }
+
+        $('weather-icon').textContent = info.icon;
+        $('weather-desc').textContent = info.desc;
+    } catch (err) {
+        console.warn('[Weather] Fetch failed:', err);
+    }
+}
+
+// ─────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────
 function renderSettings() {
@@ -531,6 +579,7 @@ async function init() {
         renderHints();
         renderGuessHistory();
         startHintTimer();
+        fetchWeather(S.city.name);
 
         if (S.status === 'won') setTimeout(() => showSuccessModal(getTodayRecord()?.guessNum || 1), 600);
         if (S.status === 'lost') setTimeout(() => openGameOver(), 600);
