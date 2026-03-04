@@ -107,9 +107,19 @@ function renderHints() {
     const revealed = S.status !== 'playing' ? 8 : S.hintsRevealed;
     tl.innerHTML = '';
 
+    if (revealed === 0) {
+        tl.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20">
+        <span class="material-symbols-outlined text-slate-300 dark:text-slate-700 mb-3" style="font-size:48px">schedule</span>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Hints starting soon</h3>
+        <p class="text-xs text-slate-400">The first hint unlocks at 8:00 AM</p>
+      </div>`;
+    }
+
     S.hints.forEach((hint, i) => {
+        if (revealed === 0) return;
         const isRevealed = i < revealed;
-        const hour = new Date(); hour.setHours(i, 0, 0, 0);
+        const hour = new Date(); hour.setHours(8 + i, 0, 0, 0);
         const timeStr = hour.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const card = document.createElement('div');
@@ -380,7 +390,15 @@ function startHintTimer() {
     function updateCountdown() {
         const ms = getNextHintMs();
         const newCount = getHintsRevealedCount();
-        $('next-hint-countdown').textContent = formatCountdown(ms);
+
+        if (newCount >= 8) {
+            $('next-hint-countdown').textContent = 'Next city tonight';
+            $('next-hint-badge').classList.add('opacity-50');
+        } else {
+            $('next-hint-countdown').textContent = formatCountdown(ms);
+            $('next-hint-badge').classList.remove('opacity-50');
+        }
+
         if (newCount > S.hintsRevealed) {
             S.hintsRevealed = newCount;
             renderHints();

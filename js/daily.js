@@ -118,37 +118,40 @@ export function buildHints(city, allHints) {
   const seed = getDateSeed();
   const rng = mulberry32(seed);
 
-  const hard   = allHints.filter((h) => h.difficulty === 'Hard');
+  const hard = allHints.filter((h) => h.difficulty === 'Hard');
   const medium = allHints.filter((h) => h.difficulty === 'Medium');
-  const easy   = allHints.filter((h) => h.difficulty === 'Easy');
+  const easy = allHints.filter((h) => h.difficulty === 'Easy');
 
   const picked = [
-    ...seededShuffle(hard,   rng).slice(0, 3),
+    ...seededShuffle(hard, rng).slice(0, 3),
     ...seededShuffle(medium, rng).slice(0, 3),
-    ...seededShuffle(easy,   rng).slice(0, 2),
+    ...seededShuffle(easy, rng).slice(0, 2),
   ];
 
   return picked.map((hint) => fillTemplate(hint, city));
 }
 
-// ─────────────────────────────────────────────────
-// Hint reveal timing — 1 hint per hour starting at midnight
-// ─────────────────────────────────────────────────
+const HINT_START_HOUR = 8; // 8:00 AM
 
-/** How many hints are currently visible based on local time (1–8). */
+/** How many hints are currently visible based on local time (0–8). */
 export function getHintsRevealedCount() {
   const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(0, 0, 0, 0);
-  const hoursPassed = Math.floor((now - midnight) / 3_600_000);
-  return Math.min(hoursPassed + 1, 8); // Hint 1 at 00:00, +1 per hour
+  const hr = now.getHours();
+  if (hr < HINT_START_HOUR) return 0;
+  return Math.min(hr - HINT_START_HOUR + 1, 8);
 }
 
-/** Milliseconds until the next hint unlocks. */
+/** Milliseconds until the next hint unlocks (or until 8 AM if before then). */
 export function getNextHintMs() {
   const now = new Date();
+  const hr = now.getHours();
+  if (hr < HINT_START_HOUR) {
+    const start = new Date(now);
+    start.setHours(HINT_START_HOUR, 0, 0, 0);
+    return start - now;
+  }
   const nextHour = new Date(now);
-  nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+  nextHour.setHours(hr + 1, 0, 0, 0);
   return nextHour - now;
 }
 
