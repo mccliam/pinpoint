@@ -3,11 +3,12 @@
  * Strategy: Cache-first for all static/game assets, network-first for Supabase API.
  */
 
-const CACHE_NAME = 'pinpoint-v2';
+const CACHE_NAME = 'pinpoint-v3';
 
 const STATIC_ASSETS = [
     './index.html',
     './js/daily.js',
+    './js/game.js',
     './js/supabase.js',
     './manifest.json',
     './icon-192.png',
