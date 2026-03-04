@@ -3,7 +3,7 @@
  * Strategy: Cache-first for all static/game assets, network-first for Supabase API.
  */
 
-const CACHE_NAME = 'pinpoint-v1';
+const CACHE_NAME = 'pinpoint-v2';
 
 const STATIC_ASSETS = [
     './index.html',
@@ -48,9 +48,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Always go network for Supabase API calls
-    if (url.hostname.includes('supabase.co') || url.hostname.includes('cdn.jsdelivr.net')) {
-        event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
+    // Force network for speed round to bypass cache during testing
+    if (url.searchParams.has('speed')) {
+        event.respondWith(fetch(event.request));
         return;
     }
 
