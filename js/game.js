@@ -357,7 +357,19 @@ async function doSubmitScore(name, score) {
     localStorage.setItem(NAME_KEY, S.playerName);
     await submitScore(S.playerName, score, S.dateStr);
     const { isFirst, firstSolver } = await checkAndClaimFirstSolver(S.playerName, S.dateStr);
-    if (isFirst) showToast(`🏆 You're the FIRST solver today, ${S.playerName}!`, 5000);
+
+    if (isFirst) {
+        showToast(`🏆 You're the FIRST solver today, ${S.playerName}!`, 5000);
+        // Trigger global push notification for the first solver
+        fetch('https://hbcrjxigytzxuhfwqume.supabase.co/functions/v1/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: 'First Solver! 🥇',
+                body: `🏆 ${S.playerName} just cracked today's puzzle!`
+            })
+        }).catch(err => console.error('[Push] Failed to trigger first solver notification:', err));
+    }
 }
 
 // ─────────────────────────────────────────────────
