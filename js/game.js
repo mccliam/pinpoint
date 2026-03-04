@@ -363,7 +363,10 @@ async function doSubmitScore(name, score) {
         // Trigger global push notification for the first solver
         fetch('https://hbcrjxigytzxuhfwqume.supabase.co/functions/v1/send-push', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
             body: JSON.stringify({
                 title: 'First Solver! 🥇',
                 body: `🏆 ${S.playerName} just cracked today's puzzle!`
