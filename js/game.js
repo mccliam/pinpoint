@@ -624,5 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show how-to-play on very first visit
     if (!localStorage.getItem(STATS_KEY)) openModal('modal-howtoplay');
 
+    // Prevent zooming on iOS (pinch-to-zoom)
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+
     init();
 });
