@@ -6,6 +6,7 @@
 import {
     getDailyCity, buildHints, getDateString,
     getHintsRevealedCount, getNextHintMs, formatCountdown,
+    IS_SPEED_ROUND,
 } from './daily.js';
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
@@ -50,7 +51,10 @@ function getTodayRecord() {
     const r = JSON.parse(localStorage.getItem(TODAY_KEY) || 'null');
     return r?.date === S.dateStr ? r : null;
 }
-function saveTodayRecord(r) { localStorage.setItem(TODAY_KEY, JSON.stringify({ ...r, date: S.dateStr })); }
+function saveTodayRecord(r) {
+    if (IS_SPEED_ROUND) return;
+    localStorage.setItem(TODAY_KEY, JSON.stringify({ ...r, date: S.dateStr }));
+}
 
 // ─────────────────────────────────────────────────
 // DOM helpers
@@ -106,6 +110,13 @@ function renderHints() {
     const tl = $('hint-timeline');
     const revealed = S.status !== 'playing' ? 8 : S.hintsRevealed;
     tl.innerHTML = '';
+
+    if (IS_SPEED_ROUND) {
+        const titleEl = document.querySelector('header h1');
+        if (titleEl && !titleEl.innerHTML.includes('SPEED')) {
+            titleEl.innerHTML = 'Pinpoint <span class="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full ml-1 align-middle">SPEED</span>';
+        }
+    }
 
     if (revealed === 0) {
         tl.innerHTML = `
@@ -407,9 +418,16 @@ function startHintTimer() {
             renderHints();
         }
         if (newCount >= 8) $('next-hint-badge').classList.add('hidden');
+
+        // Auto-refresh city in speed round if minute changes
+        if (IS_SPEED_ROUND) {
+            const currentMin = new Date().getMinutes();
+            if (!S._lastMin) S._lastMin = currentMin;
+            if (currentMin !== S._lastMin) window.location.reload();
+        }
     }
     updateCountdown();
-    setInterval(updateCountdown, 10_000); // refresh every 10s
+    setInterval(updateCountdown, IS_SPEED_ROUND ? 1000 : 10000); // refresh every 1s in speed round
 }
 
 // ─────────────────────────────────────────────────

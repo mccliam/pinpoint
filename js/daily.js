@@ -3,6 +3,9 @@
  * Handles deterministic daily city selection and hint generation.
  */
 
+export const IS_SPEED_ROUND = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('speed');
+
+
 // ─────────────────────────────────────────────────
 // Seeded PRNG (Mulberry32) — same seed → same shuffle, every time
 // ─────────────────────────────────────────────────
@@ -30,6 +33,10 @@ function getShiftedDate() {
 
 /** Returns today's date as "YYYY-MM-DD" based on the 7AM PST reset. */
 export function getDateString() {
+  if (IS_SPEED_ROUND) {
+    const d = new Date();
+    return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCHours()}-${d.getUTCMinutes()}`;
+  }
   const d = getShiftedDate();
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
@@ -52,6 +59,10 @@ export function getDateSeed() {
  * regardless of timezone (epoch is UTC midnight 2024-01-01).
  */
 export function getDailyCity(locations) {
+  if (IS_SPEED_ROUND) {
+    const minIndex = Math.floor(Date.now() / 60000);
+    return locations[minIndex % locations.length];
+  }
   const epoch = Date.UTC(2024, 0, 1);
   const d = getShiftedDate();
   const gameUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
@@ -141,6 +152,11 @@ const HINT_START_HRS_OFFSET = 1; // 1 hour after reset (8:00 AM PST)
 
 /** How many hints are currently visible based on game time (0–8). */
 export function getHintsRevealedCount() {
+  if (IS_SPEED_ROUND) {
+    // Reveal 1 hint every minute, max 8.
+    const minutesSinceHour = new Date().getMinutes();
+    return Math.min((minutesSinceHour % 10) + 1, 8);
+  }
   const hrsSinceReset = getShiftedDate().getUTCHours();
   if (hrsSinceReset < HINT_START_HRS_OFFSET) return 0;
   return Math.min(hrsSinceReset - HINT_START_HRS_OFFSET + 1, 8);
@@ -148,6 +164,9 @@ export function getHintsRevealedCount() {
 
 /** Milliseconds until the next hint unlocks. */
 export function getNextHintMs() {
+  if (IS_SPEED_ROUND) {
+    return 60000 - (Date.now() % 60000);
+  }
   const sinceReset = getShiftedDate().getUTCHours();
   const nextTarget = sinceReset < HINT_START_HRS_OFFSET ? HINT_START_HRS_OFFSET : sinceReset + 1;
 
