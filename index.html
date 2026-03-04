@@ -1,0 +1,354 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pinpoint">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5cab55">
+<title>Pinpoint — Daily Geography Challenge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{primary:'#5cab55'}}}}</script>
+<style>
+*{box-sizing:border-box}
+.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.screen{display:none}.screen.active{display:flex;flex-direction:column;height:100%}
+.slide-up{transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1)}.slide-up.open{transform:translateY(0)}
+.overlay{opacity:0;pointer-events:none;transition:opacity .3s}.overlay.open{opacity:1;pointer-events:auto}
+.shake{animation:shake .4s ease}@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.hint-enter{animation:hIn .35s ease both}@keyframes hIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}.scrollbar-hide::-webkit-scrollbar{display:none}
+body{min-height:100dvh;font-family:'Inter',sans-serif}
+</style>
+</head>
+<body class="bg-[#f6f7f6] dark:bg-[#161c16] text-slate-900 dark:text-slate-100 antialiased">
+
+<!-- ══ APP FRAME ══ -->
+<div id="app" class="relative w-full max-w-[430px] mx-auto bg-[#f6f7f6] dark:bg-[#161c16] shadow-2xl flex flex-col" style="height:100dvh;overflow:hidden">
+
+  <!-- LOADING -->
+  <div id="loading" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[#f6f7f6] dark:bg-[#161c16]">
+    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-primary via-emerald-400 to-teal-500 shadow-xl flex items-center justify-center animate-pulse">
+      <span class="material-symbols-outlined text-white" style="font-size:2.5rem">public</span>
+    </div>
+    <p class="mt-5 text-primary font-bold tracking-widest text-xs uppercase animate-pulse">Loading today's puzzle…</p>
+  </div>
+
+  <!-- SCREENS CONTAINER -->
+  <div id="screen-container" class="flex-1 overflow-hidden relative">
+
+    <!-- ╔══ SCREEN: GAME ══╗ -->
+    <div id="screen-game" class="screen active absolute inset-0">
+      <div class="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <button id="btn-open-stats" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">bar_chart</span>
+        </button>
+        <div class="flex-1 text-center">
+          <h2 class="text-xl font-bold tracking-tight">Pinpoint</h2>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-primary">Daily Challenge</p>
+        </div>
+        <button id="btn-open-howtoplay" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">help_outline</span>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto scrollbar-hide py-5 px-4 space-y-6">
+        <!-- Globe + progress -->
+        <div class="flex flex-col items-center gap-4">
+          <div class="text-center">
+            <h1 class="text-2xl font-bold">Guess the City</h1>
+            <p id="hint-progress-label" class="text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Loading…</p>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-110"></div>
+            <div class="relative w-40 h-40 rounded-full bg-gradient-to-br from-primary via-emerald-400 to-teal-500 shadow-2xl border-4 border-white/10 flex items-center justify-center overflow-hidden">
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(255,255,255,.25),_transparent_60%)]"></div>
+              <span class="material-symbols-outlined text-white" style="font-size:4.5rem;opacity:.85">public</span>
+            </div>
+          </div>
+          <div class="w-full max-w-[280px]">
+            <div class="flex justify-between text-xs font-bold uppercase tracking-tight text-slate-500 dark:text-slate-400 mb-1.5">
+              <span>Guesses Remaining</span>
+              <span id="guesses-label" class="text-primary">5 / 5</span>
+            </div>
+            <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div id="guesses-bar" class="h-full bg-primary rounded-full transition-all duration-500" style="width:100%"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Hint timeline -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today's Timeline</h3>
+            <div id="next-hint-badge" class="flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+              <span class="material-symbols-outlined" style="font-size:13px">schedule</span>
+              <span id="next-hint-countdown">--:--</span>
+            </div>
+          </div>
+          <div id="hint-timeline" class="space-y-2"></div>
+        </div>
+        <!-- Wrong-guess history -->
+        <div id="guess-history" class="space-y-1.5"></div>
+      </div>
+      <!-- Input area -->
+      <div class="shrink-0 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:18px">search</span>
+            <input id="guess-input" type="text" placeholder="Enter city name…" autocomplete="off" autocorrect="off" spellcheck="false"
+              class="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary text-sm font-medium">
+            <div id="autocomplete-list" class="hidden absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 max-h-44 overflow-y-auto"></div>
+          </div>
+          <button id="guess-btn" class="bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold px-5 rounded-xl transition-all text-sm shadow-md shadow-primary/25">Guess</button>
+        </div>
+      </div>
+    </div><!-- /screen-game -->
+
+    <!-- ╔══ SCREEN: STATS ══╗ -->
+    <div id="screen-stats" class="screen absolute inset-0">
+      <div class="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <button class="nav-back w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">arrow_back</span>
+        </button>
+        <h2 class="flex-1 text-center text-lg font-bold">Statistics</h2>
+        <div class="w-10"></div>
+      </div>
+      <div class="flex-1 overflow-y-auto scrollbar-hide pb-6">
+        <div class="grid grid-cols-2 gap-3 p-4">
+          <div class="rounded-xl p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Played</p>
+            <p id="stat-played" class="text-3xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Win %</p>
+            <p id="stat-winpct" class="text-3xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Streak</p>
+            <p id="stat-streak" class="text-3xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Max Streak</p>
+            <p id="stat-maxstreak" class="text-3xl font-bold">0</p>
+          </div>
+        </div>
+        <div class="px-4 pb-5">
+          <h3 class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Guess Distribution</h3>
+          <div id="distribution" class="space-y-2"></div>
+        </div>
+        <div class="px-4">
+          <button id="btn-share-stats" class="w-full flex items-center justify-center gap-2 bg-primary py-3.5 rounded-full font-bold text-white shadow-lg shadow-primary/20 active:scale-95 transition-all">
+            <span class="material-symbols-outlined" style="font-size:18px">share</span> Share Stats
+          </button>
+        </div>
+      </div>
+    </div><!-- /screen-stats -->
+
+    <!-- ╔══ SCREEN: LEADERBOARD ══╗ -->
+    <div id="screen-leaderboard" class="screen absolute inset-0">
+      <div class="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <button class="nav-back w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">arrow_back</span>
+        </button>
+        <div class="flex-1 text-center">
+          <h2 class="text-lg font-bold">Top Solvers</h2>
+          <p id="lb-date" class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest"></p>
+        </div>
+        <button id="btn-refresh-lb" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-500" style="font-size:20px">refresh</span>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto scrollbar-hide">
+        <div id="leaderboard-list" class="p-4 space-y-2.5"></div>
+      </div>
+    </div><!-- /screen-leaderboard -->
+
+    <!-- ╔══ SCREEN: SETTINGS ══╗ -->
+    <div id="screen-settings" class="screen absolute inset-0">
+      <div class="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <button class="nav-back w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">arrow_back</span>
+        </button>
+        <h2 class="flex-1 text-center text-lg font-bold">Settings</h2>
+        <div class="w-10"></div>
+      </div>
+      <div class="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Your Name (leaderboard)</label>
+          <input id="settings-name" type="text" maxlength="20" placeholder="Enter your name…"
+            class="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary text-sm font-medium">
+          <button id="btn-save-name" class="mt-3 w-full bg-primary text-white font-bold py-2.5 rounded-lg active:scale-95 transition-all text-sm shadow shadow-primary/25">Save Name</button>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <p class="font-semibold text-sm">Dark Mode</p>
+            <p class="text-xs text-slate-500 mt-0.5">Toggle dark theme</p>
+          </div>
+          <button id="btn-dark-toggle" role="switch" class="relative w-12 h-6 rounded-full bg-slate-300 dark:bg-primary transition-colors duration-300">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 dark:translate-x-6"></span>
+          </button>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-center">
+          <p class="text-xs text-slate-400">Pinpoint v1.0 · New city every day 🌍</p>
+          <p class="text-xs text-slate-300 dark:text-slate-600 mt-1">Serve from the "Version 1" folder</p>
+        </div>
+      </div>
+    </div><!-- /screen-settings -->
+
+  </div><!-- /screen-container -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="shrink-0 flex border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#161c16]/90 backdrop-blur-md" style="padding-bottom:env(safe-area-inset-bottom)">
+    <button data-nav="game"        class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-primary">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">explore</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider">Play</span>
+    </button>
+    <button data-nav="stats"       class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-slate-400 dark:text-slate-500">
+      <span class="material-symbols-outlined">bar_chart</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider">Stats</span>
+    </button>
+    <button data-nav="leaderboard" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-slate-400 dark:text-slate-500">
+      <span class="material-symbols-outlined">emoji_events</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider">Top</span>
+    </button>
+    <button data-nav="settings"    class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-slate-400 dark:text-slate-500">
+      <span class="material-symbols-outlined">settings</span>
+      <span class="text-[10px] font-bold uppercase tracking-wider">Settings</span>
+    </button>
+  </nav>
+
+  <!-- MODAL OVERLAY -->
+  <div id="overlay" class="overlay absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-40"></div>
+
+  <!-- MODAL: HOW TO PLAY -->
+  <div id="modal-howtoplay" class="slide-up absolute bottom-0 left-0 right-0 z-50 bg-[#f6f7f6] dark:bg-[#1e2a1e] rounded-t-3xl shadow-2xl">
+    <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></div></div>
+    <div class="px-6 pt-4 pb-2">
+      <h2 class="text-3xl font-[Lora,serif] font-bold text-center mb-6">How to Play</h2>
+      <div class="space-y-3">
+        <div class="flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm">
+          <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+            <span class="material-symbols-outlined" style="font-size:26px">calendar_today</span>
+          </div>
+          <div><p class="font-semibold">Daily Challenge</p><p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">A new city is chosen every day</p></div>
+        </div>
+        <div class="flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm">
+          <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+            <span class="material-symbols-outlined" style="font-size:26px">lightbulb</span>
+          </div>
+          <div><p class="font-semibold">Hourly Hints</p><p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">A new hint unlocks every hour — 8 total</p></div>
+        </div>
+        <div class="flex items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm">
+          <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+            <span class="material-symbols-outlined" style="font-size:26px">close</span>
+          </div>
+          <div><p class="font-semibold">5 Attempts</p><p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Guess the city — Hard clues come first</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="px-6 pb-10 pt-5">
+      <button id="btn-close-howtoplay" class="w-full bg-primary text-white font-bold py-4 rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
+        <span>Let's Play</span><span class="material-symbols-outlined">play_arrow</span>
+      </button>
+      <p id="howtoplay-nextcity" class="text-center text-[11px] text-slate-400 mt-3 font-semibold uppercase tracking-wider"></p>
+    </div>
+  </div>
+
+  <!-- MODAL: SUCCESS -->
+  <div id="modal-success" class="slide-up absolute bottom-0 left-0 right-0 z-50 bg-[#f6f7f6] dark:bg-[#1e2a1e] rounded-t-3xl shadow-2xl">
+    <div class="flex justify-center pt-3"><div class="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></div></div>
+    <div class="px-6 pb-8 pt-3">
+      <div class="text-center mb-5">
+        <h2 class="text-5xl font-[Lora,serif] font-bold text-primary">CORRECT!</h2>
+        <p id="success-city-name" class="text-xl font-bold mt-2 uppercase tracking-tight"></p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="rounded-xl p-4 bg-primary/10 border border-primary/20 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Attempt</p>
+          <p id="success-attempt" class="text-2xl font-bold"></p>
+        </div>
+        <div class="rounded-xl p-4 bg-primary/10 border border-primary/20 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Solved At</p>
+          <p id="success-time" class="text-2xl font-bold"></p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="rounded-xl p-4 border border-slate-200 dark:border-slate-800 text-center">
+          <p id="success-streak" class="text-2xl font-bold">0</p>
+          <div class="flex items-center justify-center gap-1 mt-0.5">
+            <span class="material-symbols-outlined text-orange-500" style="font-size:13px">local_fire_department</span>
+            <p class="text-xs text-slate-500">Streak</p>
+          </div>
+        </div>
+        <div class="rounded-xl p-4 border border-slate-200 dark:border-slate-800 text-center">
+          <p id="success-maxstreak" class="text-2xl font-bold">0</p>
+          <div class="flex items-center justify-center gap-1 mt-0.5">
+            <span class="material-symbols-outlined text-primary" style="font-size:13px">emoji_events</span>
+            <p class="text-xs text-slate-500">Best Streak</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-col items-center gap-1 mb-5">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next City In</p>
+        <p id="success-countdown" class="text-3xl font-mono font-bold">--:--:--</p>
+      </div>
+      <button id="btn-share-result" class="w-full bg-primary text-white font-bold py-4 rounded-full flex items-center justify-center gap-3 shadow-lg shadow-primary/25 active:scale-95 transition-all">
+        <span>Share Result</span><span class="material-symbols-outlined">content_copy</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: GAME OVER -->
+  <div id="modal-gameover" class="slide-up absolute bottom-0 left-0 right-0 z-50 bg-[#f6f7f6] dark:bg-[#1e2a1e] rounded-t-3xl shadow-2xl">
+    <div class="flex justify-center pt-3"><div class="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></div></div>
+    <div class="px-6 pb-8 pt-3">
+      <div class="text-center mb-5">
+        <h2 class="text-5xl font-[Lora,serif] font-bold text-red-500">GAME OVER</h2>
+        <p class="text-sm text-slate-500 mt-2">Better luck tomorrow — the city was:</p>
+      </div>
+      <div class="rounded-2xl p-5 bg-primary/10 border border-primary/20 mb-5 text-center">
+        <p id="gameover-city-name" class="text-3xl font-bold text-primary"></p>
+        <p id="gameover-city-type" class="text-sm text-slate-500 mt-1"></p>
+      </div>
+      <div class="flex flex-col items-center gap-1 mb-5">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Next City In</p>
+        <p id="gameover-countdown" class="text-3xl font-mono font-bold">--:--:--</p>
+      </div>
+      <button id="btn-share-gameover" class="w-full bg-slate-800 dark:bg-slate-700 text-white font-bold py-4 rounded-full flex items-center justify-center gap-3 active:scale-95 transition-all">
+        <span>Share Result</span><span class="material-symbols-outlined">content_copy</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: ENTER NAME (for leaderboard) -->
+  <div id="modal-name" class="slide-up absolute bottom-0 left-0 right-0 z-[60] bg-[#f6f7f6] dark:bg-[#1e2a1e] rounded-t-3xl shadow-2xl">
+    <div class="flex justify-center pt-3"><div class="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></div></div>
+    <div class="px-6 pb-10 pt-4">
+      <div class="text-center mb-5">
+        <span class="material-symbols-outlined text-primary" style="font-size:3rem;font-variation-settings:'FILL' 1">emoji_events</span>
+        <h2 class="text-2xl font-bold mt-2">You solved it!</h2>
+        <p class="text-sm text-slate-500 mt-1">Enter your name to join the global leaderboard</p>
+      </div>
+      <input id="name-input" type="text" maxlength="20" placeholder="Your name…"
+        class="w-full px-4 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary mb-3 text-center font-bold text-lg">
+      <button id="btn-submit-name" class="w-full bg-primary text-white font-bold py-4 rounded-full active:scale-95 transition-all shadow-lg shadow-primary/25">
+        Submit to Leaderboard
+      </button>
+      <button id="btn-skip-name" class="w-full text-slate-400 dark:text-slate-500 font-medium py-3 text-sm">Skip</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden absolute top-4 left-4 right-4 z-[200]">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary shrink-0" style="font-variation-settings:'FILL' 1">emoji_events</span>
+      <p id="toast-msg" class="text-sm font-semibold flex-1"></p>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script type="module" src="./js/game.js"></script>
+</body></html>

@@ -1,0 +1,147 @@
+/**
+ * supabase.js — All cloud/database operations.
+ * Imports the Supabase JS client via CDN ESM.
+ */
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://hbcrjxigytzxuhfwqume.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhiY3JqeGlneXR6eHVoZndxdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1OTEwMzEsImV4cCI6MjA4ODE2NzAzMX0.4jcRsRyMTjztDAeZ57b_38PD2fzIOizacMdUGfQ6F1Y';
+
+let _client = null;
+
+/** Returns (and lazily creates) the singleton Supabase client. */
+export function initSupabase() {
+    if (!_client) {
+        _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            realtime: { params: { eventsPerSecond: 5 } },
+        });
+    }
+    return _client;
+}
+
+// ─────────────────────────────────────────────────
+// Leaderboard
+// ─────────────────────────────────────────────────
+
+/**
+ * Push a player's winning score to the leaderboard.
+ * @param {string} playerName
+ * @param {number} score  — number of guesses used (1 = first try)
+ * @param {string} date   — "YYYY-MM-DD"
+ */
+export async function submitScore(playerName, score, date) {
+    const supabase = initSupabase();
+    const { error } = await supabase
+        .from('leaderboard')
+        .insert({ player_name: playerName.trim(), score, puzzle_date: date });
+
+    if (error) console.error('[Pinpoint] submitScore error:', error.message);
+    return !error;
+}
+
+/**
+ * Fetch today's top 10 leaderboard entries.
+ * Sorted by fewest guesses, then earliest solve time.
+ * @param {string} date — "YYYY-MM-DD"
+ * @returns {Array<{player_name, score, solved_at}>}
+ */
+export async function fetchDailyLeaderboard(date) {
+    const supabase = initSupabase();
+    const { data, error } = await supabase
+        .from('leaderboard')
+        .select('player_name, score, solved_at')
+        .eq('puzzle_date', date)
+        .order('score', { ascending: true })
+        .order('solved_at', { ascending: true })
+        .limit(10);
+
+    if (error) {
+        console.error('[Pinpoint] fetchDailyLeaderboard error:', error.message);
+        return [];
+    }
+    return data ?? [];
+}
+
+// ─────────────────────────────────────────────────
+// First-solver flag
+// ─────────────────────────────────────────────────
+
+/**
+ * Attempts to claim the "first solver" flag for today.
+ * Strategy:
+ *   1. Try to INSERT a new row (succeeds only if this is the very first solver).
+ *   2. If the row already exists, try to UPDATE where solved=false (race-condition safe).
+ *   3. Read back the row to return who the actual first solver is.
+ *
+ * @returns {{ isFirst: boolean, firstSolver: string|null }}
+ */
+export async function checkAndClaimFirstSolver(playerName, date) {
+    const supabase = initSupabase();
+    const name = playerName.trim() || 'Anonymous';
+
+    // Step 1 — try to create today's row as the first solver
+    const { error: insertError } = await supabase
+        .from('daily_meta')
+        .insert({ puzzle_date: date, solved: true, first_solver: name });
+
+    if (!insertError) {
+        // We created the row — we are definitively first
+        return { isFirst: true, firstSolver: name };
+    }
+
+    // Step 2 — row exists; try to claim it if not yet solved
+    const { data: updated, error: updateError } = await supabase
+        .from('daily_meta')
+        .update({ solved: true, first_solver: name })
+        .eq('puzzle_date', date)
+        .eq('solved', false)
+        .select('first_solver');
+
+    if (!updateError && updated && updated.length > 0) {
+        return { isFirst: true, firstSolver: name };
+    }
+
+    // Step 3 — already solved; read who got there first
+    const { data: meta } = await supabase
+        .from('daily_meta')
+        .select('first_solver')
+        .eq('puzzle_date', date)
+        .single();
+
+    return { isFirst: false, firstSolver: meta?.first_solver ?? null };
+}
+
+// ─────────────────────────────────────────────────
+// Realtime subscription
+// ─────────────────────────────────────────────────
+
+/**
+ * Subscribe to Postgres changes on daily_meta for today.
+ * Fires callback(firstSolverName) when another player solves the puzzle.
+ *
+ * @param {string} date
+ * @param {(name: string) => void} callback
+ * @returns The Supabase RealtimeChannel (call .unsubscribe() to clean up)
+ */
+export function subscribeToFirstSolver(date, callback) {
+    const supabase = initSupabase();
+
+    return supabase
+        .channel(`daily_meta_${date}`)
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'daily_meta',
+                filter: `puzzle_date=eq.${date}`,
+            },
+            (payload) => {
+                if (payload.new?.solved && payload.new?.first_solver) {
+                    callback(payload.new.first_solver);
+                }
+            }
+        )
+        .subscribe();
+}

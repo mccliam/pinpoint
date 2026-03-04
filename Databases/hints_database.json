@@ -1,0 +1,136 @@
+{
+  "hints": [
+    {
+      "id": "hard_1",
+      "difficulty": "Hard",
+      "category": "Elevation",
+      "template": "Located exactly [value] meters above sea level."
+    },
+    {
+      "id": "hard_2",
+      "difficulty": "Hard",
+      "category": "Rainfall",
+      "template": "It rained approximately [value] days here last year."
+    },
+    {
+      "id": "hard_3",
+      "difficulty": "Hard",
+      "category": "Vegetation",
+      "template": "The native vegetation in this region primarily consists of [value]."
+    },
+    {
+      "id": "hard_4",
+      "difficulty": "Hard",
+      "category": "Languages",
+      "template": "There are [value] distinct languages spoken in its country."
+    },
+    {
+      "id": "hard_5",
+      "difficulty": "Hard",
+      "category": "Founding",
+      "template": "This city was officially founded in the year [value]."
+    },
+    {
+      "id": "hard_6",
+      "difficulty": "Hard",
+      "category": "Transit",
+      "template": "Its primary public transit system is known locally as the [value]."
+    },
+    {
+      "id": "hard_7",
+      "difficulty": "Hard",
+      "category": "Nicknames",
+      "template": "A lesser-known local nickname for this city is [value]."
+    },
+    {
+      "id": "medium_1",
+      "difficulty": "Medium",
+      "category": "Population",
+      "template": "The population is [population], making it the [rank] largest city in its country."
+    },
+    {
+      "id": "medium_2",
+      "difficulty": "Medium",
+      "category": "Climate",
+      "template": "The average temperature is [average], with summer highs around [high] and winter lows of [low]."
+    },
+    {
+      "id": "medium_3",
+      "difficulty": "Medium",
+      "category": "Invention",
+      "template": "The [invention] was famously invented here by [inventor]."
+    },
+    {
+      "id": "medium_4",
+      "difficulty": "Medium",
+      "category": "Major Event",
+      "template": "A major historical event that occurred in this city was [value]."
+    },
+    {
+      "id": "medium_5",
+      "difficulty": "Medium",
+      "category": "National Sport",
+      "template": "The national sport of its country is [value]."
+    },
+    {
+      "id": "medium_6",
+      "difficulty": "Medium",
+      "category": "Border",
+      "template": "It is located roughly [value] miles from the nearest international border."
+    },
+    {
+      "id": "medium_7",
+      "difficulty": "Medium",
+      "category": "Geography",
+      "template": "It is situated on the banks of the [value]."
+    },
+    {
+      "id": "medium_8",
+      "difficulty": "Medium",
+      "category": "Economy",
+      "template": "A major industry that drives this city's economy is [value]."
+    },
+    {
+      "id": "easy_1",
+      "difficulty": "Easy",
+      "category": "Famous For",
+      "template": "Globally famous for [value]."
+    },
+    {
+      "id": "easy_2",
+      "difficulty": "Easy",
+      "category": "Food",
+      "template": "One of the most consumed or iconic foods from this city is [value]."
+    },
+    {
+      "id": "easy_3",
+      "difficulty": "Easy",
+      "category": "Famous Person",
+      "template": "Home of [person], a famous person who grew up here."
+    },
+    {
+      "id": "easy_4",
+      "difficulty": "Easy",
+      "category": "Flag Colors",
+      "template": "The flag of its country features the colors [value]."
+    },
+    {
+      "id": "easy_5",
+      "difficulty": "Easy",
+      "category": "Wordplay",
+      "template": "[value]"
+    },
+    {
+      "id": "easy_6",
+      "difficulty": "Easy",
+      "category": "Currency",
+      "template": "If you visit, you will need to pay for things using the [value]."
+    },
+    {
+      "id": "easy_7",
+      "difficulty": "Easy",
+      "category": "Continent",
+      "template": "This city is located on the continent of [value]."
+    }
+  ]
+}

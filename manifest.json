@@ -1,0 +1,29 @@
+{
+    "name": "Pinpoint — Daily Geography Challenge",
+    "short_name": "Pinpoint",
+    "description": "A Wordle-style daily geography guessing game. Decode 8 hints and name the city!",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f6f7f6",
+    "theme_color": "#5cab55",
+    "lang": "en",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "games",
+        "education"
+    ]
+}
