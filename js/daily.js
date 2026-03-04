@@ -19,16 +19,25 @@ function mulberry32(seed) {
 // Date helpers
 // ─────────────────────────────────────────────────
 
-/** Returns today's date as "YYYY-MM-DD" in local time. */
-export function getDateString() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+const RESET_OFFSET_HRS = 15; // 7:00 AM PST (15:00 UTC)
+
+/** Returns the game date (date at 7:00 AM PST) */
+function getShiftedDate() {
+  const d = new Date();
+  d.setUTCHours(d.getUTCHours() - RESET_OFFSET_HRS);
+  return d;
 }
 
-/** Returns an integer seed from today's date (e.g. 20260303). */
+/** Returns today's date as "YYYY-MM-DD" based on the 7AM PST reset. */
+export function getDateString() {
+  const d = getShiftedDate();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Returns an integer seed from the game date. */
 export function getDateSeed() {
   return parseInt(getDateString().replace(/-/g, ''), 10);
 }
@@ -43,13 +52,10 @@ export function getDateSeed() {
  * regardless of timezone (epoch is UTC midnight 2024-01-01).
  */
 export function getDailyCity(locations) {
-  const epoch = Date.UTC(2024, 0, 1); // Jan 1 2024
-  const nowUtc = Date.UTC(
-    new Date().getUTCFullYear(),
-    new Date().getUTCMonth(),
-    new Date().getUTCDate()
-  );
-  const dayIndex = Math.floor((nowUtc - epoch) / 86_400_000);
+  const epoch = Date.UTC(2024, 0, 1);
+  const d = getShiftedDate();
+  const gameUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const dayIndex = Math.floor((gameUtc - epoch) / 86_400_000);
   return locations[Math.abs(dayIndex) % locations.length];
 }
 
@@ -131,28 +137,25 @@ export function buildHints(city, allHints) {
   return picked.map((hint) => fillTemplate(hint, city));
 }
 
-const HINT_START_HOUR = 8; // 8:00 AM
+const HINT_START_HRS_OFFSET = 1; // 1 hour after reset (8:00 AM PST)
 
-/** How many hints are currently visible based on local time (0–8). */
+/** How many hints are currently visible based on game time (0–8). */
 export function getHintsRevealedCount() {
-  const now = new Date();
-  const hr = now.getHours();
-  if (hr < HINT_START_HOUR) return 0;
-  return Math.min(hr - HINT_START_HOUR + 1, 8);
+  const hrsSinceReset = getShiftedDate().getUTCHours();
+  if (hrsSinceReset < HINT_START_HRS_OFFSET) return 0;
+  return Math.min(hrsSinceReset - HINT_START_HRS_OFFSET + 1, 8);
 }
 
-/** Milliseconds until the next hint unlocks (or until 8 AM if before then). */
+/** Milliseconds until the next hint unlocks. */
 export function getNextHintMs() {
-  const now = new Date();
-  const hr = now.getHours();
-  if (hr < HINT_START_HOUR) {
-    const start = new Date(now);
-    start.setHours(HINT_START_HOUR, 0, 0, 0);
-    return start - now;
-  }
-  const nextHour = new Date(now);
-  nextHour.setHours(hr + 1, 0, 0, 0);
-  return nextHour - now;
+  const sinceReset = getShiftedDate().getUTCHours();
+  const nextTarget = sinceReset < HINT_START_HRS_OFFSET ? HINT_START_HRS_OFFSET : sinceReset + 1;
+
+  const target = getShiftedDate();
+  target.setUTCHours(nextTarget, 0, 0, 0);
+
+  const nowShifted = getShiftedDate();
+  return target - nowShifted;
 }
 
 /** Format milliseconds as "HH:MM:SS". */

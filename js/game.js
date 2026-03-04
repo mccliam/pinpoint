@@ -314,8 +314,11 @@ function openGameOver() {
 function startSuccessCountdown(elemId) {
     function tick() {
         const now = new Date();
-        const midnight = new Date(now); midnight.setDate(midnight.getDate() + 1); midnight.setHours(0, 0, 0, 0);
-        const ms = midnight - now;
+        const target = new Date(now);
+        target.setUTCHours(15, 0, 0, 0); // 7:00 AM PST
+        if (target <= now) target.setUTCDate(target.getUTCDate() + 1);
+
+        const ms = target - now;
         const h = Math.floor(ms / 3_600_000);
         const m = Math.floor((ms % 3_600_000) / 60_000);
         const s = Math.floor((ms % 60_000) / 1000);
@@ -476,8 +479,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Header buttons
     $('btn-open-stats').addEventListener('click', () => switchNav('stats'));
     $('btn-open-howtoplay').addEventListener('click', () => {
-        const midnight = new Date(); midnight.setDate(midnight.getDate() + 1); midnight.setHours(0, 0, 0, 0);
-        $('howtoplay-nextcity').textContent = `Next city in ${formatCountdown(midnight - new Date())}`;
+        const now = new Date();
+        const target = new Date(now);
+        target.setUTCHours(15, 0, 0, 0); // 7:00 AM PST
+        if (target <= now) target.setUTCDate(target.getUTCDate() + 1);
+        $('howtoplay-nextcity').textContent = `Next city in ${formatCountdown(target - now)}`;
         openModal('modal-howtoplay');
     });
 
