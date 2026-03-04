@@ -419,11 +419,11 @@ function startHintTimer() {
         }
         if (newCount >= 8) $('next-hint-badge').classList.add('hidden');
 
-        // Auto-refresh city in speed round if minute changes
+        // Auto-refresh city in speed round if 2-minute block changes
         if (IS_SPEED_ROUND) {
-            const currentMin = new Date().getMinutes();
-            if (!S._lastMin) S._lastMin = currentMin;
-            if (currentMin !== S._lastMin) window.location.reload();
+            const currentBlock = Math.floor(Date.now() / 120000);
+            if (!S._lastBlock) S._lastBlock = currentBlock;
+            if (currentBlock !== S._lastBlock) window.location.reload();
         }
     }
     updateCountdown();

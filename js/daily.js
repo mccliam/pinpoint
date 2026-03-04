@@ -34,8 +34,9 @@ function getShiftedDate() {
 /** Returns today's date as "YYYY-MM-DD" based on the 7AM PST reset. */
 export function getDateString() {
   if (IS_SPEED_ROUND) {
-    const d = new Date();
-    return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCHours()}-${d.getUTCMinutes()}`;
+    // City stays same for 2 minutes in speed round
+    const winIndex = Math.floor(Date.now() / 120000);
+    return `speed-${winIndex}`;
   }
   const d = getShiftedDate();
   const y = d.getUTCFullYear();
@@ -60,8 +61,8 @@ export function getDateSeed() {
  */
 export function getDailyCity(locations) {
   if (IS_SPEED_ROUND) {
-    const minIndex = Math.floor(Date.now() / 60000);
-    return locations[minIndex % locations.length];
+    const winIndex = Math.floor(Date.now() / 120000);
+    return locations[winIndex % locations.length];
   }
   const epoch = Date.UTC(2024, 0, 1);
   const d = getShiftedDate();
@@ -153,9 +154,9 @@ const HINT_START_HRS_OFFSET = 1; // 1 hour after reset (8:00 AM PST)
 /** How many hints are currently visible based on game time (0–8). */
 export function getHintsRevealedCount() {
   if (IS_SPEED_ROUND) {
-    // Reveal 1 hint every minute, max 8.
-    const minutesSinceHour = new Date().getMinutes();
-    return Math.min((minutesSinceHour % 10) + 1, 8);
+    // 1 hint every 10 seconds. 8 hints = 80 seconds. City resets every 120 seconds.
+    const secondsInRound = Math.floor((Date.now() % 120000) / 1000);
+    return Math.min(Math.floor(secondsInRound / 10) + 1, 8);
   }
   const hrsSinceReset = getShiftedDate().getUTCHours();
   if (hrsSinceReset < HINT_START_HRS_OFFSET) return 0;
@@ -165,7 +166,7 @@ export function getHintsRevealedCount() {
 /** Milliseconds until the next hint unlocks. */
 export function getNextHintMs() {
   if (IS_SPEED_ROUND) {
-    return 60000 - (Date.now() % 60000);
+    return 10000 - (Date.now() % 10000);
   }
   const sinceReset = getShiftedDate().getUTCHours();
   const nextTarget = sinceReset < HINT_START_HRS_OFFSET ? HINT_START_HRS_OFFSET : sinceReset + 1;
