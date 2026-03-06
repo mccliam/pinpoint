@@ -146,6 +146,34 @@ export function subscribeToFirstSolver(date, callback) {
         .subscribe();
 }
 
+/**
+ * Subscribe to Postgres changes on leaderboard for today.
+ * Fires callback() when a new score is added or updated.
+ *
+ * @param {string} date
+ * @param {() => void} callback
+ * @returns The Supabase RealtimeChannel
+ */
+export function subscribeToLeaderboard(date, callback) {
+    const supabase = initSupabase();
+
+    return supabase
+        .channel(`leaderboard_${date}`)
+        .on(
+            'postgres_changes',
+            {
+                event: '*', // Listen for INSERT, UPDATE, DELETE
+                schema: 'public',
+                table: 'leaderboard',
+                filter: `puzzle_date=eq.${date}`,
+            },
+            () => {
+                callback();
+            }
+        )
+        .subscribe();
+}
+
 // ─────────────────────────────────────────────────
 // Push Notifications
 // ─────────────────────────────────────────────────
@@ -158,7 +186,7 @@ export async function savePushSubscription(subscription) {
     const supabase = initSupabase();
     const { error } = await supabase
         .from('push_subscriptions')
-        .upsert({ 
+        .upsert({
             subscription: subscription,
             updated_at: new Date().toISOString()
         }, { on_conflict: 'subscription' });

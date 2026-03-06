@@ -10,7 +10,7 @@ import {
 } from './daily.js';
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
-    checkAndClaimFirstSolver, subscribeToFirstSolver,
+    checkAndClaimFirstSolver, subscribeToFirstSolver, subscribeToLeaderboard,
     savePushSubscription, syncDailyHints
 } from './supabase.js';
 
@@ -573,6 +573,14 @@ async function init() {
         // Realtime — first-solver notifications
         subscribeToFirstSolver(S.dateStr, (solverName) => {
             if (solverName !== S.playerName) showToast(`🏆 ${solverName} just cracked today's puzzle!`);
+        });
+
+        // Realtime — leaderboard updates
+        subscribeToLeaderboard(S.dateStr, () => {
+            // Only reload if they are actively looking at the leaderboard
+            if ($('screen-leaderboard').classList.contains('active')) {
+                loadLeaderboard();
+            }
         });
 
         // Render initial state
