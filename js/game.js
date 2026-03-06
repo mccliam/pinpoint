@@ -12,7 +12,7 @@ import {
     initSupabase, submitScore, fetchDailyLeaderboard,
     checkAndClaimFirstSolver, subscribeToFirstSolver, subscribeToLeaderboard,
     savePushSubscription, syncDailyHints,
-    signUpWithEmail, signInWithEmail, signOutUser, getCurrentSession, onAuthStateChange, syncUserData
+    signUpWithEmail, signInWithEmail, signOutUser, getCurrentSession, onAuthStateChange, syncUserData, syncDailyProgress
 } from './supabase.js';
 
 // ─────────────────────────────────────────────────
@@ -56,7 +56,9 @@ function getTodayRecord() {
 }
 function saveTodayRecord(r) {
     if (IS_SPEED_ROUND) return;
-    localStorage.setItem(TODAY_KEY, JSON.stringify({ ...r, date: S.dateStr }));
+    const record = { ...r, date: S.dateStr };
+    localStorage.setItem(TODAY_KEY, JSON.stringify(record));
+    syncDailyProgress(record);
 }
 
 // ─────────────────────────────────────────────────
@@ -533,7 +535,27 @@ function initAuth() {
                 changed = true;
             }
 
-            // If local was actually ahead, sync it back up
+            // Check daily progress
+            const localToday = getTodayRecord();
+            const cloudToday = meta.pinpoint_today;
+
+            // If cloud has today's date and has more guesses than local, overwrite local
+            if (cloudToday && cloudToday.date === S.dateStr) {
+                const localGuesses = localToday ? (localToday.guesses?.length || 0) : 0;
+                const cloudGuesses = cloudToday.guesses?.length || 0;
+
+                if (cloudGuesses > localGuesses) {
+                    localStorage.setItem(TODAY_KEY, JSON.stringify(cloudToday));
+                    // A mid-game state change requires a hard reload to render the board correctly
+                    window.location.reload();
+                    return;
+                } else if (localGuesses > cloudGuesses) {
+                    // Local is somehow ahead of cloud today, push it up
+                    syncDailyProgress(localToday);
+                }
+            }
+
+            // If local stats was actually ahead, sync it back up
             if (local.played > (meta.pinpoint_stats?.played || 0)) {
                 syncUserData(local, S.playerName);
             }

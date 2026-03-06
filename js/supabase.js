@@ -297,3 +297,24 @@ export async function syncUserData(stats, playerName) {
     }
     return true;
 }
+
+/**
+ * Sync the daily game progress (guesses made today) to the user's Supabase metadata.
+ */
+export async function syncDailyProgress(record) {
+    const supabase = initSupabase();
+    const session = await getCurrentSession();
+    if (!session) return false;
+
+    const { error } = await supabase.auth.updateUser({
+        data: {
+            pinpoint_today: record
+        }
+    });
+
+    if (error) {
+        console.error('[Pinpoint] syncDailyProgress error:', error.message);
+        return false;
+    }
+    return true;
+}
