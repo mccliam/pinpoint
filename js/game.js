@@ -70,6 +70,26 @@ function hideOverlay() { $('overlay').classList.remove('open'); }
 function openModal(id) { showOverlay(); $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); hideOverlay(); }
 
+function updateInputVisibility() {
+    const isPlaying = S.status === 'playing';
+    const playingArea = $('input-area-playing');
+    const completedArea = $('input-area-completed');
+    if (playingArea && completedArea) {
+        playingArea.classList.toggle('hidden', !isPlaying);
+        completedArea.classList.toggle('hidden', isPlaying);
+    }
+}
+
+function getTimeUntilNextCityMs() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setUTCHours(15, 0, 0, 0); // 15:00 UTC = 7:00 AM PST
+    if (now >= next) {
+        next.setUTCDate(next.getUTCDate() + 1);
+    }
+    return next - now;
+}
+
 function showToast(msg, durationMs = 4000) {
     $('toast-msg').textContent = msg;
     const t = $('toast');
@@ -263,6 +283,7 @@ function submitGuess() {
         renderHints();
         showSuccessModal(guessNum, points);
         promptNameIfNeeded(points);
+        updateInputVisibility();
     } else {
         S.guesses.push(raw);
         S.guessesLeft--;
@@ -276,6 +297,7 @@ function submitGuess() {
             renderHints();
             renderGuessHistory();
             openGameOver();
+            updateInputVisibility();
         } else {
             saveTodayRecord({ status: 'playing', guesses: S.guesses });
             renderHints();
@@ -384,35 +406,31 @@ function showSuccessModal(guessNum, points) {
     $('success-streak').textContent = st.streak;
     $('success-maxstreak').textContent = st.maxStreak;
     openModal('modal-success');
-
-    if (S.countdownRef) clearInterval(S.countdownRef);
-    S.countdownRef = setInterval(() => {
-        $('success-countdown').textContent = formatCountdown(getNextHintMs() + (8 - S.hintsRevealed) * 3600000);
-    }, 1000);
+    startPostGameCountdown('success-countdown');
 }
 
 function openGameOver() {
     $('gameover-city-name').textContent = S.city.name;
     $('gameover-city-type').textContent = `${S.city.type} · ${S.city.continent}`;
     openModal('modal-gameover');
-    startSuccessCountdown('gameover-countdown');
+    startPostGameCountdown('gameover-countdown');
 }
 
-function startSuccessCountdown(elemId) {
-    function tick() {
-        const now = new Date();
-        const target = new Date(now);
-        target.setUTCHours(15, 0, 0, 0); // 7:00 AM PST
-        if (target <= now) target.setUTCDate(target.getUTCDate() + 1);
+function startPostGameCountdown(elemId) {
+    if (S.countdownRef) clearInterval(S.countdownRef);
+    const tick = () => {
+        const ms = getTimeUntilNextCityMs();
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        const str = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
-        const ms = target - now;
-        const h = Math.floor(ms / 3_600_000);
-        const m = Math.floor((ms % 3_600_000) / 60_000);
-        const s = Math.floor((ms % 60_000) / 1000);
-        $(elemId).textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
+        if ($(elemId)) $(elemId).textContent = str;
+        if ($('input-countdown')) $('input-countdown').textContent = str;
+    };
     tick();
-    setInterval(tick, 1000);
+    S.countdownRef = setInterval(tick, 1000);
 }
 
 // ─────────────────────────────────────────────────
@@ -600,29 +618,35 @@ async function togglePush() {
 }
 
 async function sendTestNotification() {
-    // Only logged in admin or manually triggered
     showToast('Sending test notification...');
-    const registration = await navigator.serviceWorker.ready;
-    const sub = await registration.pushManager.getSubscription();
-    if (!sub) return showToast('Please enable notifications first');
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const sub = await registration.pushManager.getSubscription();
+        if (!sub) return showToast('Please enable notifications first');
 
-    fetch('https://hbcrjxigytzxuhfwqume.supabase.co/functions/v1/send-push', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhiY3JqeGlneXR6eHVoZndxdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1OTEwMzEsImV4cCI6MjA4ODE2NzAzMX0.4jcRsRyMTjztDAeZ57b_38PD2fzIOizacMdUGfQ6F1Y`
-        },
-        body: JSON.stringify({
-            title: 'Test Notification 🎯',
-            body: 'It works! You will now receive hints on your lock screen.'
-        })
-    }).then(res => {
-        if (res.ok) showToast('Test notification sent!');
-        else showToast('Failed to trigger test notification');
-    }).catch(err => {
-        console.error('[Push] Test failed:', err);
-        showToast('Error sending test notification');
-    });
+        const response = await fetch('https://hbcrjxigytzxuhfwqume.supabase.co/functions/v1/send-push', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+                title: 'Test Notification 🎯',
+                body: 'It works! You will now receive hints on your lock screen.'
+            })
+        });
+
+        if (response.ok) {
+            showToast('Test notification sent!');
+        } else {
+            const errorData = await response.text();
+            console.error('[Push] Test failed:', response.status, errorData);
+            showToast(`Fail: ${response.status} - ${errorData.substring(0, 30)}`);
+        }
+    } catch (err) {
+        console.error('[Push] Test exception:', err);
+        showToast(`Error: ${err.message}`);
+    }
 }
 
 // ─────────────────────────────────────────────────
@@ -814,6 +838,12 @@ async function init() {
         startHintTimer();
         fetchWeather(S.city.name);
         updatePushToggleUI();
+        updateInputVisibility();
+
+        if (S.status === 'won' || S.status === 'lost') {
+            updateInputVisibility();
+            startPostGameCountdown(); // updates input-countdown
+        }
 
         if (S.status === 'won') setTimeout(() => showSuccessModal(getTodayRecord()?.guessNum || 1, getTodayRecord()?.points), 600);
         if (S.status === 'lost') setTimeout(() => openGameOver(), 600);
