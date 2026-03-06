@@ -538,11 +538,15 @@ function renderSettings() {
     updatePushToggleUI();
 }
 
-function updatePushToggleUI() {
-    const active = Notification.permission === 'granted';
+async function updatePushToggleUI() {
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    const active = !!sub;
     const btn = $('btn-push-toggle');
-    btn.classList.toggle('bg-primary', active);
-    btn.querySelector('span').classList.toggle('translate-x-6', active);
+    if (btn) {
+        btn.classList.toggle('bg-primary', active);
+        btn.querySelector('span').classList.toggle('translate-x-6', active);
+    }
 }
 
 async function togglePush() {
@@ -557,13 +561,13 @@ async function togglePush() {
 
         if (existingSub) {
             // Already subscribed, so turn it OFF
-            const success = await deletePushSubscription(existingSub.endpoint);
+            const { success, error } = await deletePushSubscription(existingSub.endpoint);
             if (success) {
                 await existingSub.unsubscribe();
                 showToast('Lock screen notifications disabled');
                 updatePushToggleUI();
             } else {
-                showToast('Failed to remove subscription from server');
+                showToast(`Server error: ${error}`);
             }
         } else {
             // Not subscribed, so turn it ON
@@ -578,14 +582,15 @@ async function togglePush() {
                 applicationServerKey: PUSH_VAPID_PUBLIC_KEY
             });
 
-            const success = await savePushSubscription(subscription);
+            const { success, error } = await savePushSubscription(subscription);
             if (success) {
                 showToast('Lock screen notifications enabled! 🔔');
                 updatePushToggleUI();
             } else {
                 // If DB save fails, cleanup the browser subscription
                 await subscription.unsubscribe();
-                showToast('Failed to save subscription to server');
+                showToast(`Server error: ${error}`);
+                updatePushToggleUI();
             }
         }
     } catch (err) {
@@ -808,6 +813,7 @@ async function init() {
         renderGuessHistory();
         startHintTimer();
         fetchWeather(S.city.name);
+        updatePushToggleUI();
 
         if (S.status === 'won') setTimeout(() => showSuccessModal(getTodayRecord()?.guessNum || 1, getTodayRecord()?.points), 600);
         if (S.status === 'lost') setTimeout(() => openGameOver(), 600);

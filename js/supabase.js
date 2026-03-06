@@ -195,8 +195,11 @@ export async function savePushSubscription(subscription) {
             updated_at: new Date().toISOString()
         }, { on_conflict: 'endpoint' });
 
-    if (error) console.error('[Pinpoint] savePushSubscription error:', error.message);
-    return !error;
+    if (error) {
+        console.error('[Pinpoint] savePushSubscription error:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true };
 }
 
 /**
@@ -210,8 +213,11 @@ export async function deletePushSubscription(endpoint) {
         .delete()
         .eq('endpoint', endpoint);
 
-    if (error) console.error('[Pinpoint] deletePushSubscription error:', error.message);
-    return !error;
+    if (error) {
+        console.error('[Pinpoint] deletePushSubscription error:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true };
 }
 
 /**
