@@ -184,12 +184,16 @@ export function subscribeToLeaderboard(date, callback) {
  */
 export async function savePushSubscription(subscription) {
     const supabase = initSupabase();
+    // Use .toJSON() to get the plain object with endpoint and keys
+    const subJSON = subscription.toJSON ? subscription.toJSON() : subscription;
+
     const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
-            subscription: subscription,
+            endpoint: subJSON.endpoint,
+            subscription: subJSON,
             updated_at: new Date().toISOString()
-        }, { on_conflict: 'subscription' });
+        }, { on_conflict: 'endpoint' });
 
     if (error) console.error('[Pinpoint] savePushSubscription error:', error.message);
     return !error;
