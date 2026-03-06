@@ -11,7 +11,8 @@ import {
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
     checkAndClaimFirstSolver, subscribeToFirstSolver, subscribeToLeaderboard,
-    savePushSubscription, syncDailyHints
+    savePushSubscription, syncDailyHints,
+    signUpWithEmail, signInWithEmail, signOutUser, getCurrentSession, onAuthStateChange, syncUserData
 } from './supabase.js';
 
 // ─────────────────────────────────────────────────
@@ -246,11 +247,13 @@ function updateStatsWin(guessNum) {
     if (st.streak > st.maxStreak) st.maxStreak = st.streak;
     if (st.dist && guessNum >= 1 && guessNum <= 5) st.dist[guessNum - 1]++;
     saveStats(st);
+    syncUserData(st, S.playerName);
 }
 function updateStatsLoss() {
     const st = getStats();
     st.played++; st.streak = 0;
     saveStats(st);
+    syncUserData(st, S.playerName);
 }
 
 function renderStats() {
@@ -504,6 +507,85 @@ async function subscribeToPush() {
 }
 
 // ─────────────────────────────────────────────────
+// Auth & Sync
+// ─────────────────────────────────────────────────
+function initAuth() {
+    onAuthStateChange(async (event, session) => {
+        if (session && session.user) {
+            // Logged in
+            $('auth-logged-out').classList.add('hidden');
+            $('auth-logged-in').classList.remove('hidden');
+            $('auth-current-email').textContent = session.user.email;
+
+            // Merge stats on sign in or init if available
+            const meta = session.user.user_metadata || {};
+            let local = getStats();
+            let changed = false;
+
+            if (meta.pinpoint_stats && meta.pinpoint_stats.played > local.played) {
+                saveStats(meta.pinpoint_stats);
+                changed = true;
+            }
+            if (meta.pinpoint_name && meta.pinpoint_name !== S.playerName) {
+                S.playerName = meta.pinpoint_name;
+                localStorage.setItem(NAME_KEY, S.playerName);
+                $('settings-name').value = S.playerName;
+                changed = true;
+            }
+
+            // If local was actually ahead, sync it back up
+            if (local.played > (meta.pinpoint_stats?.played || 0)) {
+                syncUserData(local, S.playerName);
+            }
+
+            if (changed) {
+                renderStats(); // re-render if we grabbed cloud stats
+            }
+        } else {
+            // Logged out
+            $('auth-logged-in').classList.add('hidden');
+            $('auth-logged-out').classList.remove('hidden');
+        }
+    });
+
+    $('btn-signup').addEventListener('click', async () => {
+        const e = $('auth-email').value.trim();
+        const p = $('auth-password').value.trim();
+        if (!e || !p) return showToast('Enter email and password');
+        $('btn-signup').textContent = '...';
+        const { success, error } = await signUpWithEmail(e, p);
+        $('btn-signup').textContent = 'Sign Up';
+        if (success) {
+            showToast('Account created! You are logged in.');
+            syncUserData(getStats(), S.playerName); // Push initial stats
+            $('auth-email').value = '';
+            $('auth-password').value = '';
+        }
+        else showToast(error || 'Sign up failed');
+    });
+
+    $('btn-login').addEventListener('click', async () => {
+        const e = $('auth-email').value.trim();
+        const p = $('auth-password').value.trim();
+        if (!e || !p) return showToast('Enter email and password');
+        $('btn-login').textContent = '...';
+        const { success, error } = await signInWithEmail(e, p);
+        $('btn-login').textContent = 'Log In';
+        if (success) {
+            showToast('Logged in successfully!');
+            $('auth-email').value = '';
+            $('auth-password').value = '';
+        }
+        else showToast(error || 'Login failed');
+    });
+
+    $('btn-logout').addEventListener('click', async () => {
+        await signOutUser();
+        showToast('Logged out');
+    });
+}
+
+// ─────────────────────────────────────────────────
 // Hint reveal timer
 // ─────────────────────────────────────────────────
 function startHintTimer() {
@@ -574,6 +656,9 @@ async function init() {
         subscribeToFirstSolver(S.dateStr, (solverName) => {
             if (solverName !== S.playerName) showToast(`🏆 ${solverName} just cracked today's puzzle!`);
         });
+
+        // Auth
+        initAuth();
 
         // Realtime — leaderboard updates
         subscribeToLeaderboard(S.dateStr, () => {
@@ -667,7 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Settings
     $('btn-save-name').addEventListener('click', () => {
         const n = $('settings-name').value.trim();
-        if (n) { S.playerName = n; localStorage.setItem(NAME_KEY, n); showToast('Name saved!'); }
+        if (n) {
+            S.playerName = n;
+            localStorage.setItem(NAME_KEY, n);
+            showToast('Name saved!');
+            syncUserData(getStats(), n);
+        }
     });
     $('btn-dark-toggle').addEventListener('click', () =>
         applyDark(!document.documentElement.classList.contains('dark'))

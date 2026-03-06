@@ -308,6 +308,43 @@
               class="mt-3 w-full bg-primary text-white font-bold py-2.5 rounded-lg active:scale-95 transition-all text-sm shadow shadow-primary/25">Save
               Name</button>
           </div>
+<!-- Account Sync -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+            <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary" style="font-size: 20px;">cloud_sync</span>
+              Account Sync
+            </h3>
+            
+            <!-- Logged out view -->
+            <div id="auth-logged-out" class="space-y-3">
+              <p class="text-xs text-slate-500 mb-2">Create an account to sync your stats and leaderboard name across all your devices.</p>
+              <input id="auth-email" type="email" placeholder="Email address"
+                class="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary text-sm font-medium">
+              <input id="auth-password" type="password" placeholder="Password"
+                class="w-full px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary text-sm font-medium">
+              <div class="flex gap-2 mt-2">
+                <button id="btn-login" class="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-lg active:scale-95 transition-all text-sm">Log In</button>
+                <button id="btn-signup" class="flex-1 bg-primary text-white font-bold py-2.5 rounded-lg active:scale-95 transition-all text-sm shadow shadow-primary/25">Sign Up</button>
+              </div>
+            </div>
+
+            <!-- Logged in view -->
+            <div id="auth-logged-in" class="hidden space-y-3">
+              <div class="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-white" style="font-size: 16px;">person</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[10px] uppercase font-bold text-primary tracking-wider">Logged In</p>
+                  <p id="auth-current-email" class="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">user@example.com</p>
+                </div>
+              </div>
+              <button id="btn-logout" class="w-full bg-slate-100 hover:bg-red-50 dark:bg-slate-800 hover:dark:bg-red-900/20 text-slate-600 hover:text-red-500 font-bold py-2.5 rounded-lg active:scale-95 transition-all text-sm border border-slate-200 dark:border-slate-700 hover:border-red-200">
+                Log Out
+              </button>
+            </div>
+          </div>
+
           <div
             class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>

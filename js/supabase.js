@@ -207,7 +207,93 @@ export async function syncDailyHints(date, hints) {
     const { error } = await supabase
         .from('daily_meta')
         .upsert({ puzzle_date: date, hints: hints }, { on_conflict: 'puzzle_date' });
-
     if (error) console.error('[Pinpoint] syncDailyHints error:', error.message);
     return !error;
+}
+
+// ─────────────────────────────────────────────────
+// Auth & User Data Sync
+// ─────────────────────────────────────────────────
+
+/**
+ * Sign up a new user with email and password.
+     */
+export async function signUpWithEmail(email, password) {
+    const supabase = initSupabase();
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+    });
+    if (error) {
+        console.error('[Pinpoint] signUp error:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true, data };
+}
+
+/**
+ * Sign in an existing user.
+ */
+export async function signInWithEmail(email, password) {
+    const supabase = initSupabase();
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+    if (error) {
+        console.error('[Pinpoint] signIn error:', error.message);
+        return { success: false, error: error.message };
+    }
+    return { success: true, data };
+}
+
+/**
+ * Sign out the current user.
+ */
+export async function signOutUser() {
+    const supabase = initSupabase();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('[Pinpoint] signOut error:', error.message);
+}
+
+/**
+ * Get the current active session.
+ */
+export async function getCurrentSession() {
+    const supabase = initSupabase();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) console.error('[Pinpoint] getSession error:', error.message);
+    return session;
+}
+
+/**
+ * Listen for auth state changes (e.g., login, logout).
+ */
+export function onAuthStateChange(callback) {
+    const supabase = initSupabase();
+    return supabase.auth.onAuthStateChange((event, session) => {
+        callback(event, session);
+    });
+}
+
+/**
+ * Sync local stats and name up to the user's Supabase metadata.
+ */
+export async function syncUserData(stats, playerName) {
+    const supabase = initSupabase();
+    const session = await getCurrentSession();
+    if (!session) return false;
+
+    const { error } = await supabase.auth.updateUser({
+        data: {
+            pinpoint_stats: stats,
+            pinpoint_name: playerName
+        }
+    });
+
+    if (error) {
+        console.error('[Pinpoint] syncUserData error:', error.message);
+        return false;
+    }
+    return true;
 }
