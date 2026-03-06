@@ -32,9 +32,19 @@ export function initSupabase() {
  */
 export async function submitScore(playerName, score, date) {
     const supabase = initSupabase();
+    const session = await getCurrentSession();
+    const userId = session?.user?.id || null;
+
     const { error } = await supabase
         .from('leaderboard')
-        .insert({ player_name: playerName.trim(), score, puzzle_date: date });
+        .upsert({
+            player_name: playerName.trim(),
+            score,
+            puzzle_date: date,
+            user_id: userId
+        }, {
+            onConflict: 'user_id,puzzle_date'
+        });
 
     if (error) console.error('[Pinpoint] submitScore error:', error.message);
     return !error;
@@ -50,7 +60,7 @@ export async function fetchDailyLeaderboard(date) {
     const supabase = initSupabase();
     const { data, error } = await supabase
         .from('leaderboard')
-        .select('player_name, score, solved_at')
+        .select('player_name, score, solved_at, user_id')
         .eq('puzzle_date', date)
         .order('score', { ascending: false }) // Higher is better now
         .order('solved_at', { ascending: true })

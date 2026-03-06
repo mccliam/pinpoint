@@ -680,18 +680,17 @@ function initAuth() {
             const localToday = getTodayRecord();
             const cloudToday = meta.pinpoint_today;
 
-            // If cloud has today's date and has more guesses than local, overwrite local
             if (cloudToday && cloudToday.date === S.dateStr) {
                 const localGuesses = localToday ? (localToday.guesses?.length || 0) : 0;
                 const cloudGuesses = cloudToday.guesses?.length || 0;
+                const cloudStatus = cloudToday.status || 'playing';
 
-                if (cloudGuesses > localGuesses) {
+                // FORCE RESTORE if cloud is ahead OR cloud is finished (even if local is same count)
+                if (cloudGuesses > localGuesses || (cloudStatus !== 'playing' && (!localToday || localToday.status === 'playing'))) {
                     localStorage.setItem(TODAY_KEY, JSON.stringify(cloudToday));
-                    // A mid-game state change requires a hard reload to render the board correctly
                     window.location.reload();
                     return;
                 } else if (localGuesses > cloudGuesses) {
-                    // Local is somehow ahead of cloud today, push it up
                     syncDailyProgress(localToday);
                 }
             }
