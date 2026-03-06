@@ -38,7 +38,7 @@ const DIFF_STYLE = {
 const S = {
     city: null, hints: [], allNames: [],
     guessesLeft: MAX_GUESSES, guesses: [], status: 'playing',
-    hintsRevealed: 0, dateStr: '', hintTimerRef: null,
+    hintsRevealed: 0, hintsViewed: 1, dateStr: '', hintTimerRef: null,
     countdownRef: null, playerName: '', pendingScore: null,
 };
 
@@ -56,7 +56,7 @@ function getTodayRecord() {
 }
 function saveTodayRecord(r) {
     if (IS_SPEED_ROUND) return;
-    const record = { ...r, date: S.dateStr };
+    const record = { ...r, date: S.dateStr, hintsViewed: S.hintsViewed };
     localStorage.setItem(TODAY_KEY, JSON.stringify(record));
     syncDailyProgress(record);
 }
@@ -146,8 +146,11 @@ function renderHints() {
         card.style.animationDelay = `${i * 40}ms`;
 
         if (isRevealed) {
+            const hasViewed = i < S.hintsViewed;
             const diffClass = DIFF_STYLE[hint.difficulty] || '';
-            card.innerHTML = `
+
+            if (hasViewed) {
+                card.innerHTML = `
         <div class="flex flex-col items-center shrink-0 pt-0.5">
           <span class="text-[10px] font-bold text-slate-400">${timeStr}</span>
           <div class="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1"></div>
@@ -160,6 +163,20 @@ function renderHints() {
           </div>
           <p class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug">${hint.text}</p>
         </div>`;
+            } else {
+                // Unlocked but not viewed
+                card.innerHTML = `
+        <div class="flex flex-col items-center shrink-0 pt-0.5">
+          <span class="text-[10px] font-bold text-slate-400">${timeStr}</span>
+          <div class="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1"></div>
+          <span class="material-symbols-outlined text-primary" style="font-size:16px">lock_open</span>
+        </div>
+        <div class="flex items-center flex-1">
+           <button class="btn-reveal-hint border border-primary/30 bg-primary/10 text-primary font-bold text-xs py-2 px-4 rounded-lg active:scale-95 transition-all w-full">
+               Reveal Hint (-500 pts)
+           </button>
+        </div>`;
+            }
         } else {
             card.innerHTML = `
         <div class="flex flex-col items-center shrink-0 pt-0.5">
@@ -172,6 +189,15 @@ function renderHints() {
         </div>`;
         }
         tl.appendChild(card);
+    });
+
+    // Attach listener to reveal buttons
+    tl.querySelectorAll('.btn-reveal-hint').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            S.hintsViewed++;
+            saveTodayRecord({ status: S.status, guesses: S.guesses });
+            renderHints();
+        });
     });
 
     $('hint-progress-label').textContent =
@@ -200,6 +226,23 @@ function renderGuessHistory() {
 // ─────────────────────────────────────────────────
 // Guess handling
 // ─────────────────────────────────────────────────
+function calculatePoints(guessNum) {
+    const base = 10000;
+    const guessPenalty = (guessNum - 1) * 500;
+    const hintPenalty = Math.max(0, S.hintsViewed - 1) * 500;
+
+    // Time penalty: -1 point per 10 seconds since 7:00 AM PST
+    const now = new Date();
+    const boundaries = new Date(now);
+    boundaries.setUTCHours(15, 0, 0, 0); // 7:00 AM PST (15:00 UTC)
+    if (now < boundaries) boundaries.setUTCDate(boundaries.getUTCDate() - 1);
+
+    const secondsSinceReset = Math.floor((now - boundaries) / 1000);
+    const timePenalty = Math.max(0, Math.floor(secondsSinceReset / 10));
+
+    return Math.max(0, base - guessPenalty - hintPenalty - timePenalty);
+}
+
 function submitGuess() {
     if (S.status !== 'playing') return;
     const input = $('guess-input');
@@ -211,14 +254,15 @@ function submitGuess() {
 
     if (isCorrect) {
         const guessNum = MAX_GUESSES - S.guessesLeft + 1;
+        const points = calculatePoints(guessNum);
         S.status = 'won';
-        S.pendingScore = guessNum;
+        S.pendingScore = points;
         updateStatsWin(guessNum);
-        saveTodayRecord({ status: 'won', guesses: S.guesses, guessNum });
+        saveTodayRecord({ status: 'won', guesses: S.guesses, guessNum, points });
         input.value = '';
         renderHints();
-        showSuccessModal(guessNum);
-        promptNameIfNeeded(guessNum);
+        showSuccessModal(guessNum, points);
+        promptNameIfNeeded(points);
     } else {
         S.guesses.push(raw);
         S.guessesLeft--;
@@ -283,43 +327,68 @@ function renderStats() {
 // Leaderboard
 // ─────────────────────────────────────────────────
 async function loadLeaderboard() {
+    const lbDate = $('lb-date');
     const list = $('leaderboard-list');
-    $('lb-date').textContent = new Date().toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
-    list.innerHTML = '<div class="text-center text-slate-400 py-8 text-sm">Loading…</div>';
+    lbDate.textContent = 'Loading...';
+    list.innerHTML = '<div class="flex justify-center p-8"><div class="w-8 h-8 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-primary animate-spin"></div></div>';
 
-    const rows = await fetchDailyLeaderboard(S.dateStr);
-    if (!rows.length) {
-        list.innerHTML = '<div class="text-center text-slate-400 py-12 text-sm">No solvers yet today — be the first! 🌍</div>';
-        return;
-    }
-
-    const medals = ['🥇', '🥈', '🥉'];
-    list.innerHTML = rows.map((r, i) => `
-    <div class="flex items-center gap-3 p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">
-      <span class="text-lg w-8 text-center">${medals[i] || `#${i + 1}`}</span>
-      <div class="flex-1 min-w-0">
-        <p class="font-bold text-sm truncate">${r.player_name}</p>
-        <p class="text-xs text-slate-400">${new Date(r.solved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-      </div>
-      <div class="text-right shrink-0">
-        <p class="text-lg font-bold text-primary">${r.score}</p>
-        <p class="text-[10px] text-slate-400 uppercase tracking-wide">${r.score === 1 ? 'guess' : 'guesses'}</p>
-      </div>
-    </div>`).join('');
+    fetchDailyLeaderboard(S.dateStr).then((data) => {
+        lbDate.textContent = S.dateStr;
+        list.innerHTML = '';
+        if (data.length === 0) {
+            list.innerHTML = '<div class="text-center p-8 text-slate-500 text-sm">No one has solved it yet today.<br>Be the first!</div>';
+            return;
+        }
+        data.forEach((entry, i) => {
+            const isMe = entry.player_name === S.playerName;
+            const timeStr = new Date(entry.solved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const html = `
+        <div class="flex items-center gap-3 p-3 rounded-xl border ${isMe ? 'bg-primary/5 border-primary/30 ring-1 ring-primary/20' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'
+                }">
+          <div class="w-8 h-8 flex items-center justify-center font-bold text-sm ${i === 0 ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10 rounded-full'
+                    : i === 1 ? 'text-slate-400 bg-slate-50 dark:bg-slate-400/10 rounded-full'
+                        : i === 2 ? 'text-orange-400 bg-orange-50 dark:bg-orange-400/10 rounded-full'
+                            : 'text-slate-400'
+                }">${i + 1}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-sm truncate ${isMe ? 'text-primary' : ''}">${entry.player_name}</span>
+              ${isMe ? '<span class="text-[10px] font-bold bg-primary text-white px-1.5 py-0.5 rounded-full uppercase tracking-widest">You</span>' : ''}
+            </div>
+            <div class="text-[11px] font-medium text-slate-500 mt-0.5 flex items-center gap-2">
+              <span>${timeStr}</span>
+            </div>
+          </div>
+          <div class="text-right shrink-0 px-2">
+            <div class="font-bold text-lg leading-none">${entry.score}</div>
+            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pts</div>
+          </div>
+        </div>`;
+            list.insertAdjacentHTML('beforeend', html);
+        });
+    });
 }
 
 // ─────────────────────────────────────────────────
 // Success / Game Over modals
 // ─────────────────────────────────────────────────
-function showSuccessModal(guessNum) {
+function showSuccessModal(guessNum, points) {
+    if (!points) {
+        // Fallback calculation for older clients reading local storage
+        points = calculatePoints(guessNum);
+    }
     const st = getStats();
-    $('success-city-name').textContent = `${S.city.name}, ${S.city.continent}`;
-    $('success-attempt').textContent = ORDINALS[guessNum - 1] + ' Try';
+    $('success-city-name').textContent = S.city.name;
+    $('success-points').textContent = points.toLocaleString();
     $('success-time').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     $('success-streak').textContent = st.streak;
     $('success-maxstreak').textContent = st.maxStreak;
     openModal('modal-success');
-    startSuccessCountdown('success-countdown');
+
+    if (S.countdownRef) clearInterval(S.countdownRef);
+    S.countdownRef = setInterval(() => {
+        $('success-countdown').textContent = formatCountdown(getNextHintMs() + (8 - S.hintsRevealed) * 3600000);
+    }, 1000);
 }
 
 function openGameOver() {
@@ -670,6 +739,7 @@ async function init() {
             S.guesses = saved.guesses || [];
             S.guessesLeft = MAX_GUESSES - S.guesses.length;
             S.status = saved.status || 'playing';
+            S.hintsViewed = saved.hintsViewed || 1;
         }
 
         S.hintsRevealed = getHintsRevealedCount();
@@ -696,7 +766,7 @@ async function init() {
         startHintTimer();
         fetchWeather(S.city.name);
 
-        if (S.status === 'won') setTimeout(() => showSuccessModal(getTodayRecord()?.guessNum || 1), 600);
+        if (S.status === 'won') setTimeout(() => showSuccessModal(getTodayRecord()?.guessNum || 1, getTodayRecord()?.points), 600);
         if (S.status === 'lost') setTimeout(() => openGameOver(), 600);
     } catch (err) {
         console.error('[Pinpoint] Init failed:', err);

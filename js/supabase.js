@@ -27,7 +27,7 @@ export function initSupabase() {
 /**
  * Push a player's winning score to the leaderboard.
  * @param {string} playerName
- * @param {number} score  — number of guesses used (1 = first try)
+ * @param {number} score  — calculated points (higher is better)
  * @param {string} date   — "YYYY-MM-DD"
  */
 export async function submitScore(playerName, score, date) {
@@ -42,7 +42,7 @@ export async function submitScore(playerName, score, date) {
 
 /**
  * Fetch today's top 10 leaderboard entries.
- * Sorted by fewest guesses, then earliest solve time.
+ * Sorted by highest score, then earliest solve time.
  * @param {string} date — "YYYY-MM-DD"
  * @returns {Array<{player_name, score, solved_at}>}
  */
@@ -52,7 +52,7 @@ export async function fetchDailyLeaderboard(date) {
         .from('leaderboard')
         .select('player_name, score, solved_at')
         .eq('puzzle_date', date)
-        .order('score', { ascending: true })
+        .order('score', { ascending: false }) // Higher is better now
         .order('solved_at', { ascending: true })
         .limit(10);
 
