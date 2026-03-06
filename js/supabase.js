@@ -200,6 +200,21 @@ export async function savePushSubscription(subscription) {
 }
 
 /**
+ * Removes a Web Push subscription from the database.
+ * @param {string} endpoint — The unique endpoint to remove
+ */
+export async function deletePushSubscription(endpoint) {
+    const supabase = initSupabase();
+    const { error } = await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('endpoint', endpoint);
+
+    if (error) console.error('[Pinpoint] deletePushSubscription error:', error.message);
+    return !error;
+}
+
+/**
  * Syncs the day's hints to daily_meta so the Edge Function can send 
  * them in push notifications.
  * @param {string} date

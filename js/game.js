@@ -11,7 +11,7 @@ import {
 import {
     initSupabase, submitScore, fetchDailyLeaderboard,
     checkAndClaimFirstSolver, subscribeToFirstSolver, subscribeToLeaderboard,
-    savePushSubscription, syncDailyHints,
+    savePushSubscription, deletePushSubscription, syncDailyHints,
     signUpWithEmail, signInWithEmail, signOutUser, getCurrentSession, onAuthStateChange, syncUserData, syncDailyProgress
 } from './supabase.js';
 
@@ -545,36 +545,79 @@ function updatePushToggleUI() {
     btn.querySelector('span').classList.toggle('translate-x-6', active);
 }
 
-async function subscribeToPush() {
+async function togglePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         showToast('Push not supported on this device/browser');
         return;
     }
 
     try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            showToast('Notification permission denied');
-            return;
-        }
-
         const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: PUSH_VAPID_PUBLIC_KEY
-        });
+        const existingSub = await registration.pushManager.getSubscription();
 
-        const success = await savePushSubscription(subscription);
-        if (success) {
-            showToast('Lock screen notifications enabled! 🔔');
-            updatePushToggleUI();
+        if (existingSub) {
+            // Already subscribed, so turn it OFF
+            const success = await deletePushSubscription(existingSub.endpoint);
+            if (success) {
+                await existingSub.unsubscribe();
+                showToast('Lock screen notifications disabled');
+                updatePushToggleUI();
+            } else {
+                showToast('Failed to remove subscription from server');
+            }
         } else {
-            showToast('Failed to save subscription to server');
+            // Not subscribed, so turn it ON
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                showToast('Notification permission denied');
+                return;
+            }
+
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: PUSH_VAPID_PUBLIC_KEY
+            });
+
+            const success = await savePushSubscription(subscription);
+            if (success) {
+                showToast('Lock screen notifications enabled! 🔔');
+                updatePushToggleUI();
+            } else {
+                // If DB save fails, cleanup the browser subscription
+                await subscription.unsubscribe();
+                showToast('Failed to save subscription to server');
+            }
         }
     } catch (err) {
-        console.error('[Pinpoint] Push subscription error:', err);
-        showToast('Error enabling notifications');
+        console.error('[Pinpoint] Push toggle error:', err);
+        showToast('Error toggling notifications');
     }
+}
+
+async function sendTestNotification() {
+    // Only logged in admin or manually triggered
+    showToast('Sending test notification...');
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    if (!sub) return showToast('Please enable notifications first');
+
+    fetch('https://hbcrjxigytzxuhfwqume.supabase.co/functions/v1/send-push', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhiY3JqeGlneXR6eHVoZndxdW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1OTEwMzEsImV4cCI6MjA4ODE2NzAzMX0.4jcRsRyMTjztDAeZ57b_38PD2fzIOizacMdUGfQ6F1Y`
+        },
+        body: JSON.stringify({
+            title: 'Test Notification 🎯',
+            body: 'It works! You will now receive hints on your lock screen.'
+        })
+    }).then(res => {
+        if (res.ok) showToast('Test notification sent!');
+        else showToast('Failed to trigger test notification');
+    }).catch(err => {
+        console.error('[Push] Test failed:', err);
+        showToast('Error sending test notification');
+    });
 }
 
 // ─────────────────────────────────────────────────
@@ -854,7 +897,8 @@ document.addEventListener('DOMContentLoaded', () => {
     $('btn-dark-toggle').addEventListener('click', () =>
         applyDark(!document.documentElement.classList.contains('dark'))
     );
-    $('btn-push-toggle').addEventListener('click', subscribeToPush);
+    $('btn-push-toggle').addEventListener('click', togglePush);
+    $('btn-push-test').addEventListener('click', sendTestNotification);
 
     // Register service worker
     if ('serviceWorker' in navigator) {

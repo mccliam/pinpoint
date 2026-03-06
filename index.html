@@ -354,15 +354,21 @@
           </div>
 
           <div
-            class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <div>
-              <p class="font-semibold text-sm">Lock Screen Notifications</p>
-              <p class="text-xs text-slate-500 mt-0.5">Alerts for new hints</p>
+            class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-semibold text-sm">Lock Screen Notifications</p>
+                <p class="text-xs text-slate-500 mt-0.5">Alerts for new hints</p>
+              </div>
+              <button id="btn-push-toggle" role="switch"
+                class="relative w-12 h-6 rounded-full bg-slate-300 transition-colors duration-300">
+                <span
+                  class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300"></span>
+              </button>
             </div>
-            <button id="btn-push-toggle" role="switch"
-              class="relative w-12 h-6 rounded-full bg-slate-300 transition-colors duration-300">
-              <span
-                class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300"></span>
+            <button id="btn-push-test"
+              class="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all">
+              Send Test Notification
             </button>
           </div>
           <div
