@@ -77,6 +77,13 @@ function updateInputVisibility() {
     if (playingArea && completedArea) {
         playingArea.classList.toggle('hidden', !isPlaying);
         completedArea.classList.toggle('hidden', isPlaying);
+
+        if (!isPlaying) {
+            const msg = $('input-completed-msg');
+            if (msg) {
+                msg.textContent = S.status === 'won' ? 'You already won! 🏆' : 'Try again tomorrow! 🍀';
+            }
+        }
     }
 }
 
