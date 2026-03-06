@@ -78,6 +78,11 @@ function updateInputVisibility() {
         playingArea.classList.toggle('hidden', !isPlaying);
         completedArea.classList.toggle('hidden', isPlaying);
 
+        const guessesContainer = $('guesses-container');
+        if (guessesContainer) {
+            guessesContainer.classList.toggle('hidden', !isPlaying);
+        }
+
         if (!isPlaying) {
             const msg = $('input-completed-msg');
             if (msg) {
@@ -190,8 +195,8 @@ function renderHints() {
           </div>
           <p class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug">${hint.text}</p>
         </div>`;
-            } else {
-                // Unlocked but not viewed
+            } else if (S.status === 'playing') {
+                // Unlocked but not viewed, and still playing
                 card.innerHTML = `
         <div class="flex flex-col items-center shrink-0 pt-0.5">
           <span class="text-[10px] font-bold text-slate-400">${timeStr}</span>
@@ -202,6 +207,17 @@ function renderHints() {
            <button class="btn-reveal-hint border border-primary/30 bg-primary/10 text-primary font-bold text-xs py-2 px-4 rounded-lg active:scale-95 transition-all w-full">
                Reveal Hint (-500 pts)
            </button>
+        </div>`;
+            } else {
+                // Unlocked but not viewed, and game is over
+                card.innerHTML = `
+        <div class="flex flex-col items-center shrink-0 pt-0.5">
+          <span class="text-[10px] font-bold text-slate-400">${timeStr}</span>
+          <div class="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1"></div>
+          <span class="material-symbols-outlined text-slate-400" style="font-size:16px">lock_clock</span>
+        </div>
+        <div class="flex items-center flex-1">
+          <p class="text-sm text-slate-400 italic">Game finished — Reveal locked</p>
         </div>`;
             }
         } else {
