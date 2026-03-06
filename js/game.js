@@ -113,7 +113,7 @@ function initDark() {
 // ─────────────────────────────────────────────────
 function renderHints() {
     const tl = $('hint-timeline');
-    const revealed = S.status !== 'playing' ? 8 : S.hintsRevealed;
+    const revealed = S.hintsRevealed;
     tl.innerHTML = '';
 
     if (IS_SPEED_ROUND) {
